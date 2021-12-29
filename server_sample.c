@@ -138,7 +138,7 @@ void http(int sockfd) {
         // }
 
         // HTTPヘッダを送信
-        send_msg(sockfd, "HTTP/1.0 200 OK\r\n");
+        send_msg(sockfd, "HTTP/1.1 200 OK\r\n");
         send_msg(sockfd, "Content-Type: text/html\r\n");
         send_msg(sockfd, "\r\n");
 

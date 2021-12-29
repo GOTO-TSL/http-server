@@ -1,7 +1,9 @@
-#include <stdio.h>
+#include <sys/fcntl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -10,47 +12,11 @@
 #define SERV_PORT 8080
 #define BUF_SIZE 1024
 
-int http(int sock);
-int send_msg(int sock, char *msg);
+// 関数のプロトタイプ宣言
+void http(int sockfd);
+int send_msg(int sockfd, char *msg);
 
-int send_msg(int sock, char *msg) {
-    char *send_buf;
-    int len;
-    int send_size;
-
-    send_buf = msg;
-    len = strlen(msg);
-    send_size = write(sock, &send_buf, len);
-    if (send_size == -1) {
-        printf("send error\n");
-        return -1;
-    }
-    printf("%d\n", send_size);
-    return 0;
-}
-
-int http(int sock) {
-    char recv_buf[BUF_SIZE], *buf;
-    int recv_size;
-    
-    recv_size = read(sock, &recv_buf, BUF_SIZE);
-    if (recv_size == -1) {
-        printf("recieve error\n");
-        return -1;
-    }
-
-    send_msg(sock, "HTTP/1.1 200 OK\r\n");
-    send_msg(sock, "Content-Type: text/html\r\n");
-    send_msg(sock, "\r\n");
-
-    printf("%s\n", recv_buf);
-
-    fgets(buf, 1024, stdin);
-    write(sock, buf, strlen(buf));
-
-    return 0;
-}
-
+// メイン関数
 int main(void) {
     int sockfd;
     int new_sockfd;
@@ -61,7 +27,6 @@ int main(void) {
         printf("socket error\n");
         return -1;
     }
-    printf("socket created\n");
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -70,7 +35,7 @@ int main(void) {
 
 
     // bind
-    if (bind(sockfd, (const struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
         printf("bind error\n");
         fprintf(stderr, "%s\n", strerror(errno));
         return -1;
@@ -91,8 +56,6 @@ int main(void) {
             return -1;
         }
 
-        printf("connecting!\n");
-
         http(new_sockfd);
 
         close(new_sockfd);
@@ -101,4 +64,43 @@ int main(void) {
     close(sockfd);
 
     return 0;
+}
+
+// http通信を行う関数
+void http(int sockfd) {
+    char recv_buf[BUF_SIZE];
+    int recv_size;
+    char *method, *uri_addr, *http_ver;
+
+    
+    recv_size = read(sockfd, recv_buf, BUF_SIZE);
+    if (recv_size == -1) {
+        printf("recieve error\n");
+    } else {
+        send_msg(sockfd, "HTTP/1.1 200 OK\r\n");
+        send_msg(sockfd, "Content-Type: text/html\r\n");
+        send_msg(sockfd, "\r\n");
+
+        sscanf(recv_buf, "%s %s %s", method, uri_addr, http_ver);
+
+        if (strcmp(method, "GET") == 0) {
+            printf("GET method\n");
+        } else {
+            send_msg(sockfd, "501 Not implemented.");
+        }
+    }
+}
+
+// レスポンスを送信する関数
+int send_msg(int sockfd, char *msg) {
+    int len;
+    int send_size;
+
+    len = strlen(msg);
+    send_size = write(sockfd, msg, len);
+    if (send_size == -1) {
+        printf("send error\n");
+        return -1;
+    }
+    return len;
 }
