@@ -84,7 +84,7 @@ void http(int sockfd) {
         sscanf(recv_buf, "%s %s %s", method, uri_addr, http_ver);
 
         if (strcmp(method, "GET") == 0) {
-            printf("GET method\n");
+            send_msg(sockfd, "<h1>Hello World!</h1>\n");
         } else {
             send_msg(sockfd, "501 Not implemented.");
         }
