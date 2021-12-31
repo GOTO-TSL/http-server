@@ -1,10 +1,16 @@
 #include <stdio.h>
 #include <unistd.h>
 
+int add_ten(int x);
+
+void add_ten(int *x) {
+    *x += 10;
+}
+
 int main(void) {
-    char a[1024];
-    int read_result;
-    read_result = read(0, &a, sizeof(a));
-    printf("%s\n", a);
+    int a = 10;
+    int *p = &a;
+    add_ten(p);
+    printf("%d\n", a);
     return 0;
 }

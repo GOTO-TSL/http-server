@@ -15,6 +15,7 @@
 // 関数のプロトタイプ宣言
 void http(int sockfd);
 int send_msg(int sockfd, char *msg);
+int send_file(int sockfd, char *file_path);
 
 // メイン関数
 int main(void) {
@@ -73,18 +74,14 @@ void http(int sockfd) {
     char *method, *uri_addr, *http_ver;
 
     
-    recv_size = read(sockfd, recv_buf, BUF_SIZE);
+    recv_size = read(sockfd, recv_buf, BUF_SIZE); 
     if (recv_size == -1) {
         printf("recieve error\n");
     } else {
-        send_msg(sockfd, "HTTP/1.1 200 OK\r\n");
-        send_msg(sockfd, "Content-Type: text/html\r\n");
-        send_msg(sockfd, "\r\n");
-
         sscanf(recv_buf, "%s %s %s", method, uri_addr, http_ver);
 
         if (strcmp(method, "GET") == 0) {
-            send_msg(sockfd, "<h1>Hello World!</h1>\n");
+            send_file(sockfd, uri_addr);
         } else {
             send_msg(sockfd, "501 Not implemented.");
         }
@@ -103,4 +100,43 @@ int send_msg(int sockfd, char *msg) {
         return -1;
     }
     return len;
+}
+
+int send_file(int sockfd, char *file_path) {
+    int read_size;
+    int write_size;
+    int readfd;
+    char *file_uri;
+    char read_buf[BUF_SIZE];
+
+    file_uri = file_path + 1;
+    readfd = open(file_uri, O_RDONLY, 0666);
+    if (readfd == -1) {
+        send_msg(sockfd, "HTTP/1.1 200 OK\r\n");
+        send_msg(sockfd, "404 Not Found\r\n");
+    } else {
+        // レスポンスを返す
+        send_msg(sockfd, "HTTP/1.1 200 OK\r\n");
+        send_msg(sockfd, "Content-Type: text/html\r\n");
+        send_msg(sockfd, "\r\n");
+
+        // ファイルの内容を送信
+        read_size = read(readfd, read_buf, BUF_SIZE);
+        if (read_size == -1) {
+            printf("file read error\n");
+            fprintf(stdout, "%d\n", errno);
+            return -1;
+        }
+
+        write_size = write(sockfd, read_buf, BUF_SIZE);
+        if (write_size <= 0) {
+            printf("write error");
+            close(readfd);
+            return -1;
+        }
+
+        close(readfd);
+    }
+
+    return 0;
 }
